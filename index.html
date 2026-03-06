@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -10,7 +9,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyA2TjiodmbyIfiecuKi67FlZZS1TTSe4iU",
@@ -23,14 +23,22 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
 
   window._db = db;
-  window._col = () => collection(db, "items");
+  window._auth = auth;
+  window._signIn = () => signInWithPopup(auth, provider);
+  window._signOut = () => signOut(auth);
+  window._onAuthStateChanged = (cb) => onAuthStateChanged(auth, cb);
+  window._collection = collection;
   window._addDoc = addDoc;
   window._getDocs = getDocs;
   window._updateDoc = updateDoc;
   window._deleteDoc = deleteDoc;
   window._doc = doc;
+  window._query = query;
+  window._where = where;
   window._firebaseReady = true;
   window.dispatchEvent(new Event("firebase-ready"));
 </script>
@@ -54,7 +62,7 @@ body { background: #0f0e0e; color: #f0ece4; font-family: 'DM Sans', sans-serif; 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: #c9a96e; color: #0f0e0e; padding: 10px 22px; border-radius: 30px; font-weight: 600; font-size: 14px; z-index: 200; animation: slideUp 0.3s ease; }
 @keyframes slideUp { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
-.loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-size: 16px; color: #9a8f7a; gap: 10px; }
+.fullscreen-center { display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; gap: 20px; }
 select option { background: #1a1917; }
 </style>
 </head>
@@ -69,7 +77,7 @@ const STATUSES = [
   { label: "Đang giặt", color: "#60a5fa", emoji: "🫧" },
   { label: "Đang phơi", color: "#fbbf24", emoji: "☀️" },
   { label: "Ở quê", color: "#f97316", emoji: "🏡" },
-  { label: "BẨN", color: "#c084fc", emoji: "🤝" },
+  { label: "Cho mượn", color: "#c084fc", emoji: "🤝" },
   { label: "Sửa đồ", color: "#fb7185", emoji: "✂️" },
 ];
 
@@ -93,7 +101,33 @@ function resizeImage(file) {
   });
 }
 
+function LoginScreen() {
+  const [loading, setLoading] = useState(false);
+  const handleLogin = async () => {
+    setLoading(true);
+    try { await window._signIn(); } catch (e) { console.error(e); setLoading(false); }
+  };
+  return (
+    <div className="fullscreen-center" style={{ background: "#0f0e0e" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 64, marginBottom: 16 }}>👗</div>
+        <div style={{ fontSize: 11, letterSpacing: 3, color: "#9a8f7a", textTransform: "uppercase", marginBottom: 8 }}>Welcome to</div>
+        <h1 style={{ fontSize: 36, fontWeight: 700, fontFamily: "'Playfair Display', serif", marginBottom: 8 }}>
+          Tủ Đồ <span style={{ color: "#c9a96e", fontStyle: "italic" }}>của tôi</span>
+        </h1>
+        <p style={{ color: "#5a5248", fontSize: 14, marginBottom: 40 }}>Quản lý tủ đồ cá nhân — riêng tư, chỉ mình bạn thấy</p>
+        <button className="btn btn-gold" style={{ padding: "14px 32px", fontSize: 15, display: "flex", alignItems: "center", gap: 10, margin: "0 auto", borderRadius: 12 }} onClick={handleLogin} disabled={loading}>
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#0f0e0e" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#0f0e0e" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#0f0e0e" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#0f0e0e" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.48a4.77 4.77 0 0 1 4.48-3.3z"/></svg>
+          {loading ? "Đang đăng nhập..." : "Đăng nhập bằng Google"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState("Tất cả");
@@ -108,19 +142,32 @@ function App() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
 
+  useEffect(() => {
+    const init = () => {
+      window._onAuthStateChanged((u) => {
+        setUser(u);
+        setAuthLoading(false);
+      });
+    };
+    if (window._firebaseReady) init();
+    else window.addEventListener("firebase-ready", init, { once: true });
+  }, []);
+
+  useEffect(() => {
+    if (!user) { setItems([]); return; }
+    loadItems();
+  }, [user]);
+
+  const userCol = () => window._collection(window._db, "users", user.uid, "items");
+
   const loadItems = async () => {
+    setLoading(true);
     try {
-      const snap = await window._getDocs(window._col());
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setItems(data);
+      const snap = await window._getDocs(userCol());
+      setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) { console.error(e); }
     setLoading(false);
   };
-
-  useEffect(() => {
-    if (window._firebaseReady) loadItems();
-    else window.addEventListener("firebase-ready", loadItems, { once: true });
-  }, []);
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
@@ -134,11 +181,11 @@ function App() {
     if (!form.name.trim()) return;
     try {
       if (editId) {
-        await window._updateDoc(window._doc(window._db, "items", editId), form);
+        await window._updateDoc(window._doc(window._db, "users", user.uid, "items", editId), form);
         setItems(items.map(it => it.id === editId ? { ...it, ...form } : it));
         showToast("Đã cập nhật! ✨");
       } else {
-        const ref = await window._addDoc(window._col(), { ...form, createdAt: Date.now() });
+        const ref = await window._addDoc(userCol(), { ...form, createdAt: Date.now() });
         setItems([{ id: ref.id, ...form }, ...items]);
         showToast("Đã thêm vào tủ! 🎉");
       }
@@ -148,7 +195,7 @@ function App() {
 
   const handleDelete = async (id) => {
     try {
-      await window._deleteDoc(window._doc(window._db, "items", id));
+      await window._deleteDoc(window._doc(window._db, "users", user.uid, "items", id));
       setItems(items.filter(it => it.id !== id));
       showToast("Đã xoá!");
     } catch { showToast("Lỗi xoá!"); }
@@ -156,7 +203,7 @@ function App() {
 
   const updateStatus = async (id, status) => {
     try {
-      await window._updateDoc(window._doc(window._db, "items", id), { status });
+      await window._updateDoc(window._doc(window._db, "users", user.uid, "items", id), { status });
       setItems(items.map(it => it.id === id ? { ...it, status } : it));
     } catch {}
   };
@@ -169,27 +216,33 @@ function App() {
 
   const si = (label) => STATUSES.find(s => s.label === label) || STATUSES[0];
 
-  if (loading) return <div className="loading"><span style={{fontSize:28}}>👗</span> Đang tải tủ đồ...</div>;
+  if (authLoading) return <div className="fullscreen-center" style={{color:"#5a5248", fontSize:16}}>👗 Đang tải...</div>;
+  if (!user) return <LoginScreen />;
 
   return (
     <div style={{ minHeight: "100vh" }}>
-      <div style={{ borderBottom: "1px solid #2d2a25", padding: "24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      {/* Header */}
+      <div style={{ borderBottom: "1px solid #2d2a25", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
           <div style={{ fontSize: 11, letterSpacing: 3, color: "#9a8f7a", textTransform: "uppercase", marginBottom: 4 }}>My Closet</div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>Tủ Đồ <span style={{ color: "#c9a96e", fontStyle: "italic" }}>của tôi</span></h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>Tủ Đồ <span style={{ color: "#c9a96e", fontStyle: "italic" }}>của tôi</span></h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 12, color: "#4ade80", fontWeight: 500 }}>● Firebase</span>
-          <button className="btn btn-gold" onClick={() => { setForm(defaultForm); setEditId(null); setShowForm(true); }}>+ Thêm trang phục</button>
+          {user.photoURL && <img src={user.photoURL} alt="" style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid #c9a96e" }} />}
+          <span style={{ fontSize: 13, color: "#9a8f7a" }}>{user.displayName?.split(" ").pop()}</span>
+          <button className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 12px" }} onClick={() => window._signOut()}>Đăng xuất</button>
+          <button className="btn btn-gold" onClick={() => { setForm(defaultForm); setEditId(null); setShowForm(true); }}>+ Thêm</button>
         </div>
       </div>
 
-      <div style={{ padding: "12px 24px", display: "flex", gap: 20, borderBottom: "1px solid #2d2a25", flexWrap: "wrap" }}>
+      {/* Stats */}
+      <div style={{ padding: "10px 24px", display: "flex", gap: 16, borderBottom: "1px solid #2d2a25", flexWrap: "wrap" }}>
         {STATUSES.map(s => { const c = items.filter(it => it.status === s.label).length; return c > 0 && <span key={s.label} style={{ fontSize: 13, color: "#9a8f7a" }}>{s.emoji} <span style={{ color: s.color, fontWeight: 600 }}>{c}</span> {s.label.toLowerCase()}</span>; })}
         <span style={{ marginLeft: "auto", fontSize: 13, color: "#9a8f7a" }}>Tổng: <span style={{ color: "#c9a96e", fontWeight: 600 }}>{items.length}</span> món</span>
       </div>
 
-      <div style={{ padding: "14px 24px", display: "flex", flexDirection: "column", gap: 10, borderBottom: "1px solid #2d2a25" }}>
+      {/* Filters */}
+      <div style={{ padding: "12px 24px", display: "flex", flexDirection: "column", gap: 10, borderBottom: "1px solid #2d2a25" }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ fontSize: 11, color: "#5a5248", textTransform: "uppercase", letterSpacing: 1, marginRight: 4 }}>Loại</span>
           {["Tất cả", ...TYPES].map(t => (
@@ -206,8 +259,11 @@ function App() {
         <input className="input-field" placeholder="🔍 Tìm tên..." value={search} onChange={e => setSearch(e.target.value)} style={{ maxWidth: 280 }} />
       </div>
 
+      {/* Grid */}
       <div style={{ padding: "24px" }}>
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "64px 0", color: "#5a5248" }}>👗 Đang tải tủ đồ...</div>
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "64px 0", color: "#5a5248" }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>👗</div>
             <div>Chưa có trang phục nào — nhấn "+ Thêm" để bắt đầu!</div>
@@ -238,6 +294,7 @@ function App() {
         )}
       </div>
 
+      {/* Modal */}
       {showForm && (
         <div className="overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
           <div className="modal">
