@@ -1,1 +1,285 @@
 
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tủ Đồ Của Tôi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA2TjiodmbyIfiecuKi67FlZZS1TTSe4iU",
+    authDomain: "wadrobecma26.firebaseapp.com",
+    projectId: "wadrobecma26",
+    storageBucket: "wadrobecma26.firebasestorage.app",
+    messagingSenderId: "23934684751",
+    appId: "1:23934684751:web:65b4f61e0e70d1cf4f243a",
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window._db = db;
+  window._col = () => collection(db, "items");
+  window._addDoc = addDoc;
+  window._getDocs = getDocs;
+  window._updateDoc = updateDoc;
+  window._deleteDoc = deleteDoc;
+  window._doc = doc;
+  window._firebaseReady = true;
+  window.dispatchEvent(new Event("firebase-ready"));
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0f0e0e; color: #f0ece4; font-family: 'DM Sans', sans-serif; }
+::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #1a1917; } ::-webkit-scrollbar-thumb { background: #3d3830; border-radius: 3px; }
+.card { background: #1a1917; border: 1px solid #2d2a25; border-radius: 12px; transition: all 0.25s; overflow: hidden; }
+.card:hover { border-color: #c9a96e; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(201,169,110,0.1); }
+.btn { cursor: pointer; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; transition: all 0.2s; font-size: 13px; }
+.btn-gold { background: #c9a96e; color: #0f0e0e; font-weight: 600; padding: 10px 20px; }
+.btn-gold:hover { background: #e0c080; }
+.btn-ghost { background: transparent; color: #9a8f7a; border: 1px solid #2d2a25; padding: 8px 14px; cursor: pointer; border-radius: 8px; font-family: 'DM Sans'; font-size: 13px; transition: all 0.2s; }
+.btn-ghost:hover { border-color: #c9a96e; color: #c9a96e; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+.input-field { background: #0f0e0e; border: 1px solid #2d2a25; border-radius: 8px; color: #f0ece4; padding: 10px 14px; font-family: 'DM Sans'; font-size: 14px; width: 100%; outline: none; transition: border 0.2s; }
+.input-field:focus { border-color: #c9a96e; }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 50; display: flex; align-items: center; justify-content: center; }
+.modal { background: #1a1917; border: 1px solid #3d3830; border-radius: 16px; padding: 28px; width: 90%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: #c9a96e; color: #0f0e0e; padding: 10px 22px; border-radius: 30px; font-weight: 600; font-size: 14px; z-index: 200; animation: slideUp 0.3s ease; }
+@keyframes slideUp { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+.loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-size: 16px; color: #9a8f7a; gap: 10px; }
+select option { background: #1a1917; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const TYPES = ["Sơ mi", "Quần bò", "Quần vải", "Áo thun", "Áo khoác", "Váy", "Đầm", "Áo len", "Hoodie", "Shorts", "Khác"];
+const STATUSES = [
+  { label: "Sẵn sàng", color: "#4ade80", emoji: "✅" },
+  { label: "Đang giặt", color: "#60a5fa", emoji: "🫧" },
+  { label: "Đang phơi", color: "#fbbf24", emoji: "☀️" },
+  { label: "Ở quê", color: "#f97316", emoji: "🏡" },
+  { label: "BẨN", color: "#c084fc", emoji: "🤝" },
+  { label: "Sửa đồ", color: "#fb7185", emoji: "✂️" },
+];
+
+const defaultForm = { name: "", type: "Sơ mi", status: "Sẵn sàng", image: null, notes: "" };
+
+function resizeImage(file) {
+  return new Promise((res) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 400 / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width * scale; canvas.height = img.height * scale;
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        res(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function App() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState("Tất cả");
+  const [filterStatus, setFilterStatus] = useState("Tất cả");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(defaultForm);
+  const [editId, setEditId] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [search, setSearch] = useState("");
+  const [toast, setToast] = useState(null);
+  const fileRef = useRef();
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
+
+  const loadItems = async () => {
+    try {
+      const snap = await window._getDocs(window._col());
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setItems(data);
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (window._firebaseReady) loadItems();
+    else window.addEventListener("firebase-ready", loadItems, { once: true });
+  }, []);
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setForm(f => ({ ...f, image: "loading" }));
+    const data = await resizeImage(file);
+    setForm(f => ({ ...f, image: data }));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.name.trim()) return;
+    try {
+      if (editId) {
+        await window._updateDoc(window._doc(window._db, "items", editId), form);
+        setItems(items.map(it => it.id === editId ? { ...it, ...form } : it));
+        showToast("Đã cập nhật! ✨");
+      } else {
+        const ref = await window._addDoc(window._col(), { ...form, createdAt: Date.now() });
+        setItems([{ id: ref.id, ...form }, ...items]);
+        showToast("Đã thêm vào tủ! 🎉");
+      }
+    } catch (e) { showToast("Lỗi: " + e.message); }
+    setForm(defaultForm); setEditId(null); setShowForm(false);
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await window._deleteDoc(window._doc(window._db, "items", id));
+      setItems(items.filter(it => it.id !== id));
+      showToast("Đã xoá!");
+    } catch { showToast("Lỗi xoá!"); }
+  };
+
+  const updateStatus = async (id, status) => {
+    try {
+      await window._updateDoc(window._doc(window._db, "items", id), { status });
+      setItems(items.map(it => it.id === id ? { ...it, status } : it));
+    } catch {}
+  };
+
+  const filtered = items.filter(it =>
+    (filterType === "Tất cả" || it.type === filterType) &&
+    (filterStatus === "Tất cả" || it.status === filterStatus) &&
+    it.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const si = (label) => STATUSES.find(s => s.label === label) || STATUSES[0];
+
+  if (loading) return <div className="loading"><span style={{fontSize:28}}>👗</span> Đang tải tủ đồ...</div>;
+
+  return (
+    <div style={{ minHeight: "100vh" }}>
+      <div style={{ borderBottom: "1px solid #2d2a25", padding: "24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: 3, color: "#9a8f7a", textTransform: "uppercase", marginBottom: 4 }}>My Closet</div>
+          <h1 style={{ fontSize: 26, fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>Tủ Đồ <span style={{ color: "#c9a96e", fontStyle: "italic" }}>của tôi</span></h1>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 12, color: "#4ade80", fontWeight: 500 }}>● Firebase</span>
+          <button className="btn btn-gold" onClick={() => { setForm(defaultForm); setEditId(null); setShowForm(true); }}>+ Thêm trang phục</button>
+        </div>
+      </div>
+
+      <div style={{ padding: "12px 24px", display: "flex", gap: 20, borderBottom: "1px solid #2d2a25", flexWrap: "wrap" }}>
+        {STATUSES.map(s => { const c = items.filter(it => it.status === s.label).length; return c > 0 && <span key={s.label} style={{ fontSize: 13, color: "#9a8f7a" }}>{s.emoji} <span style={{ color: s.color, fontWeight: 600 }}>{c}</span> {s.label.toLowerCase()}</span>; })}
+        <span style={{ marginLeft: "auto", fontSize: 13, color: "#9a8f7a" }}>Tổng: <span style={{ color: "#c9a96e", fontWeight: 600 }}>{items.length}</span> món</span>
+      </div>
+
+      <div style={{ padding: "14px 24px", display: "flex", flexDirection: "column", gap: 10, borderBottom: "1px solid #2d2a25" }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: "#5a5248", textTransform: "uppercase", letterSpacing: 1, marginRight: 4 }}>Loại</span>
+          {["Tất cả", ...TYPES].map(t => (
+            <span key={t} className="chip" style={{ background: filterType === t ? "rgba(201,169,110,0.15)" : "#1a1917", color: filterType === t ? "#c9a96e" : "#9a8f7a", borderColor: filterType === t ? "#c9a96e" : "transparent" }} onClick={() => setFilterType(t)}>{t}</span>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: "#5a5248", textTransform: "uppercase", letterSpacing: 1, marginRight: 4 }}>Status</span>
+          {["Tất cả", ...STATUSES.map(s => s.label)].map(s => {
+            const info = STATUSES.find(x => x.label === s);
+            return <span key={s} className="chip" style={{ background: filterStatus === s ? "rgba(201,169,110,0.12)" : "#1a1917", color: filterStatus === s ? "#c9a96e" : "#9a8f7a", borderColor: filterStatus === s ? "#c9a96e" : "transparent" }} onClick={() => setFilterStatus(s)}>{info ? info.emoji + " " : ""}{s}</span>;
+          })}
+        </div>
+        <input className="input-field" placeholder="🔍 Tìm tên..." value={search} onChange={e => setSearch(e.target.value)} style={{ maxWidth: 280 }} />
+      </div>
+
+      <div style={{ padding: "24px" }}>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "64px 0", color: "#5a5248" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>👗</div>
+            <div>Chưa có trang phục nào — nhấn "+ Thêm" để bắt đầu!</div>
+          </div>
+        ) : (
+          <div className="grid">
+            {filtered.map(item => (
+              <div key={item.id} className="card">
+                <div style={{ height: 180, background: "#0f0e0e", position: "relative", cursor: item.image ? "pointer" : "default" }} onClick={() => item.image && setPreview(item.image)}>
+                  {item.image ? <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, color: "#3d3830" }}>👕</div>}
+                  <div style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.7)", borderRadius: 20, padding: "3px 10px", fontSize: 11, color: "#c9a96e", fontWeight: 500 }}>{item.type}</div>
+                </div>
+                <div style={{ padding: "14px 14px 12px" }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8, fontFamily: "'Playfair Display', serif" }}>{item.name}</div>
+                  <select className="input-field" value={item.status} onChange={e => updateStatus(item.id, e.target.value)}
+                    style={{ padding: "5px 10px", fontSize: 12, color: si(item.status).color, background: "rgba(0,0,0,0.4)", marginBottom: 8 }}>
+                    {STATUSES.map(s => <option key={s.label} value={s.label}>{s.emoji} {s.label}</option>)}
+                  </select>
+                  {item.notes && <div style={{ fontSize: 11, color: "#7a7060", fontStyle: "italic", marginBottom: 8 }}>"{item.notes}"</div>}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="btn btn-ghost" style={{ flex: 1, padding: "7px" }} onClick={() => { setForm({ name: item.name, type: item.type, status: item.status, image: item.image, notes: item.notes || "" }); setEditId(item.id); setShowForm(true); }}>✏️ Sửa</button>
+                    <button className="btn btn-ghost" style={{ flex: 1, padding: "7px", color: "#fb7185", borderColor: "#3d2028" }} onClick={() => handleDelete(item.id)}>🗑️ Xoá</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showForm && (
+        <div className="overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
+          <div className="modal">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>{editId ? "Chỉnh sửa" : "Thêm trang phục"}</h2>
+              <button className="btn-ghost" onClick={() => setShowForm(false)}>✕</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div><div style={{ fontSize: 12, color: "#9a8f7a", marginBottom: 6 }}>TÊN *</div><input className="input-field" placeholder="VD: Sơ mi trắng Oxford..." value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><div style={{ fontSize: 12, color: "#9a8f7a", marginBottom: 6 }}>LOẠI</div><select className="input-field" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>{TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
+                <div><div style={{ fontSize: 12, color: "#9a8f7a", marginBottom: 6 }}>TRẠNG THÁI</div><select className="input-field" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>{STATUSES.map(s => <option key={s.label}>{s.emoji} {s.label}</option>)}</select></div>
+              </div>
+              <div><div style={{ fontSize: 12, color: "#9a8f7a", marginBottom: 6 }}>GHI CHÚ</div><input className="input-field" placeholder="Mua ở đâu, mặc dịp nào..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
+              <div>
+                <div style={{ fontSize: 12, color: "#9a8f7a", marginBottom: 6 }}>ẢNH</div>
+                {form.image === "loading" ? <div style={{ color: "#9a8f7a", fontSize: 13 }}>Đang xử lý ảnh...</div>
+                  : form.image
+                  ? <div style={{ position: "relative", display: "inline-block" }}>
+                      <img src={form.image} alt="" style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 8, border: "1px solid #3d3830" }} />
+                      <button className="btn" onClick={() => setForm(f => ({ ...f, image: null }))} style={{ position: "absolute", top: -8, right: -8, background: "#fb7185", color: "#fff", width: 22, height: 22, borderRadius: "50%", fontSize: 12 }}>✕</button>
+                    </div>
+                  : <button className="btn-ghost" onClick={() => fileRef.current.click()}>📷 Chọn ảnh</button>
+                }
+                <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageChange} />
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button className="btn btn-gold" style={{ flex: 1, padding: 12 }} onClick={handleSubmit}>{editId ? "Lưu" : "Thêm vào tủ"}</button>
+                <button className="btn-ghost" onClick={() => setShowForm(false)}>Huỷ</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {preview && <div className="overlay" onClick={() => setPreview(null)}><img src={preview} alt="" style={{ maxWidth: "90vw", maxHeight: "85vh", borderRadius: 12 }} /></div>}
+      {toast && <div className="toast">{toast}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
