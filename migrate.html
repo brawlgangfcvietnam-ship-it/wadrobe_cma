@@ -1,0 +1,66 @@
+Migrate · HTML
+Copy
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<title>Migrate Data</title>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, addDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA2TjiodmbyIfiecuKi67FlZZS1TTSe4iU",
+    authDomain: "wadrobecma26.firebaseapp.com",
+    projectId: "wadrobecma26",
+    storageBucket: "wadrobecma26.firebasestorage.app",
+    messagingSenderId: "23934684751",
+    appId: "1:23934684751:web:65b4f61e0e70d1cf4f243a",
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const uid = "nVNQPSYcf0SYHuA49idnlU9aSTD2";
+  const log = (msg, color = "#f0ece4") => {
+    const div = document.createElement("div");
+    div.style.color = color;
+    div.style.marginBottom = "6px";
+    div.textContent = msg;
+    document.getElementById("log").appendChild(div);
+  };
+
+  async function migrate() {
+    log("🔄 Bắt đầu migrate...", "#fbbf24");
+    try {
+      const snap = await getDocs(collection(db, "items"));
+      log(`📦 Tìm thấy ${snap.docs.length} món đồ`, "#60a5fa");
+
+      let count = 0;
+      for (const d of snap.docs) {
+        const data = d.data();
+        await setDoc(doc(db, "users", uid, "items", d.id), data);
+        log(`✅ Đã migrate: ${data.name}`, "#4ade80");
+        count++;
+      }
+
+      log(`🎉 Xong! Đã migrate ${count} món đồ vào tài khoản của bạn.`, "#c9a96e");
+      log("👉 Giờ vào app chính là thấy đồ rồi!", "#c9a96e");
+    } catch (e) {
+      log("❌ Lỗi: " + e.message, "#fb7185");
+    }
+  }
+
+  window.addEventListener("load", migrate);
+</script>
+<style>
+  body { background: #0f0e0e; color: #f0ece4; font-family: 'DM Sans', monospace; padding: 40px; }
+  h2 { color: #c9a96e; margin-bottom: 24px; font-size: 20px; }
+</style>
+</head>
+<body>
+  <h2>🔄 Migrate Tủ Đồ → Firebase User</h2>
+  <div id="log"></div>
+</body>
+</html>
