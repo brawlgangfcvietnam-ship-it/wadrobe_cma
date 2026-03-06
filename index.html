@@ -9,11 +9,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyA2TjiodmbyIfiecuKi67FlZZS1TTSe4iU",
+    apiKey: "PASTE_API_KEY_CUA_BAN_VAO_DAY",
     authDomain: "wadrobecma26.firebaseapp.com",
     projectId: "wadrobecma26",
     storageBucket: "wadrobecma26.firebasestorage.app",
@@ -37,8 +37,6 @@
   window._updateDoc = updateDoc;
   window._deleteDoc = deleteDoc;
   window._doc = doc;
-  window._query = query;
-  window._where = where;
   window._firebaseReady = true;
   window.dispatchEvent(new Event("firebase-ready"));
 </script>
@@ -54,15 +52,21 @@ body { background: #0f0e0e; color: #f0ece4; font-family: 'DM Sans', sans-serif; 
 .btn-gold:hover { background: #e0c080; }
 .btn-ghost { background: transparent; color: #9a8f7a; border: 1px solid #2d2a25; padding: 8px 14px; cursor: pointer; border-radius: 8px; font-family: 'DM Sans'; font-size: 13px; transition: all 0.2s; }
 .btn-ghost:hover { border-color: #c9a96e; color: #c9a96e; }
+.btn-ai { background: linear-gradient(135deg, #7c3aed, #c9a96e); color: #fff; font-weight: 600; padding: 10px 20px; border: none; cursor: pointer; border-radius: 8px; font-family: 'DM Sans'; font-size: 13px; transition: all 0.2s; }
+.btn-ai:hover { opacity: 0.9; transform: translateY(-1px); }
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
 .input-field { background: #0f0e0e; border: 1px solid #2d2a25; border-radius: 8px; color: #f0ece4; padding: 10px 14px; font-family: 'DM Sans'; font-size: 14px; width: 100%; outline: none; transition: border 0.2s; }
 .input-field:focus { border-color: #c9a96e; }
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 50; display: flex; align-items: center; justify-content: center; }
 .modal { background: #1a1917; border: 1px solid #3d3830; border-radius: 16px; padding: 28px; width: 90%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+.modal-wide { background: #1a1917; border: 1px solid #3d3830; border-radius: 16px; padding: 28px; width: 90%; max-width: 640px; max-height: 90vh; overflow-y: auto; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: #c9a96e; color: #0f0e0e; padding: 10px 22px; border-radius: 30px; font-weight: 600; font-size: 14px; z-index: 200; animation: slideUp 0.3s ease; }
 @keyframes slideUp { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
 .fullscreen-center { display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; gap: 20px; }
+.ai-result { background: #0f0e0e; border: 1px solid #3d3830; border-radius: 12px; padding: 18px; margin-top: 16px; font-size: 14px; line-height: 1.8; white-space: pre-wrap; color: #f0ece4; }
+.occasion-chip { display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; border: 1px solid #2d2a25; background: #1a1917; color: #9a8f7a; transition: all 0.2s; margin: 4px; }
+.occasion-chip.active { border-color: #c9a96e; background: rgba(201,169,110,0.15); color: #c9a96e; }
 select option { background: #1a1917; }
 </style>
 </head>
@@ -80,6 +84,7 @@ const STATUSES = [
   { label: "Cho mượn", color: "#c084fc", emoji: "🤝" },
   { label: "Sửa đồ", color: "#fb7185", emoji: "✂️" },
 ];
+const OCCASIONS = ["Hàng ngày", "Đi làm", "Đi chơi", "Hẹn hò", "Dự tiệc", "Ở nhà", "Đi biển"];
 
 const defaultForm = { name: "", type: "Sơ mi", status: "Sẵn sàng", image: null, notes: "" };
 
@@ -125,6 +130,67 @@ function LoginScreen() {
   );
 }
 
+function AIModal({ items, onClose }) {
+  const [occasion, setOccasion] = useState("Hàng ngày");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const readyItems = items.filter(it => it.status === "Sẵn sàng");
+
+  const getSuggestion = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: readyItems, occasion }),
+      });
+      const data = await res.json();
+      setResult(data.suggestion || data.error);
+    } catch (e) {
+      setResult("Lỗi kết nối: " + e.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-wide">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>✨ AI Phối Đồ</h2>
+          <button className="btn-ghost" onClick={onClose}>✕</button>
+        </div>
+
+        <div style={{ fontSize: 13, color: "#9a8f7a", marginBottom: 12 }}>
+          Đang dùng <span style={{ color: "#4ade80", fontWeight: 600 }}>{readyItems.length}</span> món đồ đang sẵn sàng
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 12, color: "#9a8f7a", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>Dịp mặc</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+            {OCCASIONS.map(o => (
+              <span key={o} className={`occasion-chip ${occasion === o ? "active" : ""}`} onClick={() => setOccasion(o)}>{o}</span>
+            ))}
+          </div>
+        </div>
+
+        <button className="btn-ai" style={{ width: "100%", padding: 14, fontSize: 15 }} onClick={getSuggestion} disabled={loading || readyItems.length === 0}>
+          {loading ? "✨ Claude đang phối đồ cho bạn..." : "✨ Gợi ý outfit cho tôi!"}
+        </button>
+
+        {readyItems.length === 0 && <div style={{ textAlign: "center", color: "#fb7185", fontSize: 13, marginTop: 12 }}>Không có món đồ nào đang "Sẵn sàng"!</div>}
+
+        {result && (
+          <div className="ai-result">
+            {result}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -133,6 +199,7 @@ function App() {
   const [filterType, setFilterType] = useState("Tất cả");
   const [filterStatus, setFilterStatus] = useState("Tất cả");
   const [showForm, setShowForm] = useState(false);
+  const [showAI, setShowAI] = useState(false);
   const [form, setForm] = useState(defaultForm);
   const [editId, setEditId] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -144,10 +211,7 @@ function App() {
 
   useEffect(() => {
     const init = () => {
-      window._onAuthStateChanged((u) => {
-        setUser(u);
-        setAuthLoading(false);
-      });
+      window._onAuthStateChanged((u) => { setUser(u); setAuthLoading(false); });
     };
     if (window._firebaseReady) init();
     else window.addEventListener("firebase-ready", init, { once: true });
@@ -221,27 +285,25 @@ function App() {
 
   return (
     <div style={{ minHeight: "100vh" }}>
-      {/* Header */}
       <div style={{ borderBottom: "1px solid #2d2a25", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
           <div style={{ fontSize: 11, letterSpacing: 3, color: "#9a8f7a", textTransform: "uppercase", marginBottom: 4 }}>My Closet</div>
           <h1 style={{ fontSize: 24, fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>Tủ Đồ <span style={{ color: "#c9a96e", fontStyle: "italic" }}>của tôi</span></h1>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           {user.photoURL && <img src={user.photoURL} alt="" style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid #c9a96e" }} />}
           <span style={{ fontSize: 13, color: "#9a8f7a" }}>{user.displayName?.split(" ").pop()}</span>
-          <button className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 12px" }} onClick={() => window._signOut()}>Đăng xuất</button>
+          <button className="btn-ai" onClick={() => setShowAI(true)}>✨ AI Phối Đồ</button>
           <button className="btn btn-gold" onClick={() => { setForm(defaultForm); setEditId(null); setShowForm(true); }}>+ Thêm</button>
+          <button className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 12px" }} onClick={() => window._signOut()}>Đăng xuất</button>
         </div>
       </div>
 
-      {/* Stats */}
       <div style={{ padding: "10px 24px", display: "flex", gap: 16, borderBottom: "1px solid #2d2a25", flexWrap: "wrap" }}>
         {STATUSES.map(s => { const c = items.filter(it => it.status === s.label).length; return c > 0 && <span key={s.label} style={{ fontSize: 13, color: "#9a8f7a" }}>{s.emoji} <span style={{ color: s.color, fontWeight: 600 }}>{c}</span> {s.label.toLowerCase()}</span>; })}
         <span style={{ marginLeft: "auto", fontSize: 13, color: "#9a8f7a" }}>Tổng: <span style={{ color: "#c9a96e", fontWeight: 600 }}>{items.length}</span> món</span>
       </div>
 
-      {/* Filters */}
       <div style={{ padding: "12px 24px", display: "flex", flexDirection: "column", gap: 10, borderBottom: "1px solid #2d2a25" }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ fontSize: 11, color: "#5a5248", textTransform: "uppercase", letterSpacing: 1, marginRight: 4 }}>Loại</span>
@@ -259,7 +321,6 @@ function App() {
         <input className="input-field" placeholder="🔍 Tìm tên..." value={search} onChange={e => setSearch(e.target.value)} style={{ maxWidth: 280 }} />
       </div>
 
-      {/* Grid */}
       <div style={{ padding: "24px" }}>
         {loading ? (
           <div style={{ textAlign: "center", padding: "64px 0", color: "#5a5248" }}>👗 Đang tải tủ đồ...</div>
@@ -294,7 +355,6 @@ function App() {
         )}
       </div>
 
-      {/* Modal */}
       {showForm && (
         <div className="overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
           <div className="modal">
@@ -330,6 +390,7 @@ function App() {
         </div>
       )}
 
+      {showAI && <AIModal items={items} onClose={() => setShowAI(false)} />}
       {preview && <div className="overlay" onClick={() => setPreview(null)}><img src={preview} alt="" style={{ maxWidth: "90vw", maxHeight: "85vh", borderRadius: 12 }} /></div>}
       {toast && <div className="toast">{toast}</div>}
     </div>
